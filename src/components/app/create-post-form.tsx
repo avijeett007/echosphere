@@ -21,14 +21,14 @@ import { useToast } from '@/hooks/use-toast';
 import { BrandTemplate, Post, socialPlatforms, SocialPlatform } from '@/lib/types';
 import { socialIconMap } from '@/components/icons/social-icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wand2, Upload, Link as LinkIcon, Bot, Terminal } from 'lucide-react';
+import { Wand2, Upload, Link as LinkIcon, Bot, Terminal, Loader } from 'lucide-react';
 import React, { useTransition } from 'react';
 import Image from 'next/image';
 import { improveWritingAndAddHashtags } from '@/ai/flows/improve-writing-and-add-hashtags';
 import { generateImageFromPrompt } from '@/ai/flows/generate-image-from-prompt';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { cn } from '@/lib/utils';
-import { GlitchLoader } from '@/components/ui/glitch-loader';
+import { Progress } from '@/components/ui/progress';
 
 const formSchema = z.object({
   platforms: z.array(z.string()).refine((value) => value.some((item) => item), {
@@ -44,7 +44,7 @@ const formSchema = z.object({
   videoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 });
 
-const defaultBrandColor = '#4285F4';
+const defaultBrandColor = '#F2994A';
 
 export function CreatePostForm() {
   const { toast } = useToast();
@@ -56,7 +56,7 @@ export function CreatePostForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      platforms: [],
+      platforms: ['X'],
       text: '',
       hashtags: '',
       brandName: 'EchoSphere',
@@ -161,8 +161,8 @@ export function CreatePostForm() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 relative scanline-animation">
-      <h1 className="font-headline text-3xl font-bold mb-2 glitch" data-text="Create a New Post">Create a New Post</h1>
+    <div className="p-4 sm:p-6 md:p-8">
+      <h1 className="font-headline text-3xl font-bold mb-2">Create a New Post</h1>
       <p className="text-muted-foreground mb-8">Craft your message, engage your audience, and let AI do the heavy lifting.</p>
       
       <Form {...form}>
@@ -192,7 +192,7 @@ export function CreatePostForm() {
                   />
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button type="button" onClick={handleImproveWriting} disabled={isImproving || !textValue}>
-                      {isImproving ? <GlitchLoader text="Improving..." /> : <><Wand2 className="mr-2 h-4 w-4" />Improve with AI</>}
+                      {isImproving ? <><Loader className="mr-2 h-4 w-4 animate-spin" />Improving...</> : <><Wand2 className="mr-2 h-4 w-4" />Improve with AI</>}
                     </Button>
                   </div>
                   <FormField
@@ -220,7 +220,7 @@ export function CreatePostForm() {
                   <Tabs defaultValue="generate" className="w-full">
                     <TabsList className="grid w-full grid-cols-3">
                       <TabsTrigger value="generate"><Bot className="mr-2 h-4 w-4" /> Generate</TabsTrigger>
-                      <TabsTrigger value="upload"><Upload className="mr-2 h-4 w-4" /> Upload</TabsTrigger>
+                      <TabsTrigger value="upload" disabled><Upload className="mr-2 h-4 w-4" /> Upload</TabsTrigger>
                       <TabsTrigger value="link"><LinkIcon className="mr-2 h-4 w-4" /> Link Video</TabsTrigger>
                     </TabsList>
                     <TabsContent value="generate" className="pt-4">
@@ -239,9 +239,14 @@ export function CreatePostForm() {
                             )}
                         />
                          <Button type="button" onClick={handleGenerateImage} disabled={isGenerating || !textValue}>
-                            {isGenerating ? <GlitchLoader text="Generating..." /> : <><Wand2 className="mr-2 h-4 w-4" />{ form.getValues('imagePrompt') ? 'Generate Image' : 'Generate from Text' }</>}
+                            {isGenerating ? <><Loader className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Wand2 className="mr-2 h-4 w-4" />{ form.getValues('imagePrompt') ? 'Generate Image' : 'Generate from Text' }</>}
                         </Button>
-                        {isGenerating && <div className="flex items-center text-sm text-muted-foreground"><GlitchLoader text="Generating your image, please wait..." /></div>}
+                        {isGenerating && (
+                            <div className="space-y-2 pt-2">
+                                <Progress value={50} className="h-2" />
+                                <p className="text-sm text-muted-foreground">Generating your image, please wait...</p>
+                            </div>
+                        )}
                         {generatedImageUrl && (
                             <div className="mt-4">
                                 <p className="font-medium mb-2">Generated Image:</p>
@@ -249,10 +254,10 @@ export function CreatePostForm() {
                             </div>
                         )}
                         {!generatedImageUrl && !isGenerating && (
-                           <div className="mt-4 rounded-lg border border-dashed aspect-square w-full max-w-md flex items-center justify-center bg-muted/50">
+                           <div className="mt-4 rounded-lg border border-dashed aspect-video w-full max-w-md flex items-center justify-center bg-muted/20">
                                <div className="text-center text-muted-foreground">
                                    <Terminal className="mx-auto h-12 w-12" />
-                                   <p className="mt-2">Awaiting image generation...</p>
+                                   <p className="mt-2">Your generated image will appear here</p>
                                </div>
                            </div>
                         )}
@@ -260,16 +265,15 @@ export function CreatePostForm() {
                     </TabsContent>
                     <TabsContent value="upload" className="pt-4">
                         <div className="flex items-center justify-center w-full">
-                            <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted">
+                            <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-not-allowed bg-muted/20">
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
-                                    <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                                    <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
+                                    <p className="mb-2 text-sm text-muted-foreground">Upload feature coming soon</p>
+                                    <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF</p>
                                 </div>
-                                <Input id="dropzone-file" type="file" className="hidden" />
+                                <Input id="dropzone-file" type="file" className="hidden" disabled />
                             </label>
                         </div> 
-                        <FormDescription className="text-center mt-2">Image/Video upload is for demonstration purposes.</FormDescription>
                     </TabsContent>
                     <TabsContent value="link" className="pt-4">
                       <FormField
