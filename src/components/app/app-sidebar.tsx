@@ -34,20 +34,20 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link href="/create-post" legacyBehavior passHref>
-              <SidebarMenuButton asChild isActive={pathname === '/create-post'} tooltip="Create Post">
+            <SidebarMenuButton asChild isActive={pathname === '/create-post'} tooltip="Create Post">
+              <Link href="/create-post">
                 <Pencil />
                 <span>Create Post</span>
-              </SidebarMenuButton>
-            </Link>
+              </Link>
+            </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/history" legacyBehavior passHref>
-              <SidebarMenuButton asChild isActive={pathname === '/history'} tooltip="Post History">
+            <SidebarMenuButton asChild isActive={pathname === '/history'} tooltip="Post History">
+              <Link href="/history">
                 <History />
                 <span>Post History</span>
-              </SidebarMenuButton>
-            </Link>
+              </Link>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
