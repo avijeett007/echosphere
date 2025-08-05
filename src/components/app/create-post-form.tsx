@@ -21,13 +21,14 @@ import { useToast } from '@/hooks/use-toast';
 import { BrandTemplate, Post, socialPlatforms, SocialPlatform } from '@/lib/types';
 import { socialIconMap } from '@/components/icons/social-icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wand2, Upload, Link as LinkIcon, Bot, Loader2 } from 'lucide-react';
+import { Wand2, Upload, Link as LinkIcon, Bot, Terminal } from 'lucide-react';
 import React, { useTransition } from 'react';
 import Image from 'next/image';
 import { improveWritingAndAddHashtags } from '@/ai/flows/improve-writing-and-add-hashtags';
 import { generateImageFromPrompt } from '@/ai/flows/generate-image-from-prompt';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { cn } from '@/lib/utils';
+import { GlitchLoader } from '@/components/ui/glitch-loader';
 
 const formSchema = z.object({
   platforms: z.array(z.string()).refine((value) => value.some((item) => item), {
@@ -160,8 +161,8 @@ export function CreatePostForm() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8">
-      <h1 className="font-headline text-3xl font-bold mb-2">Create a New Post</h1>
+    <div className="p-4 sm:p-6 md:p-8 relative scanline-animation">
+      <h1 className="font-headline text-3xl font-bold mb-2 glitch" data-text="Create a New Post">Create a New Post</h1>
       <p className="text-muted-foreground mb-8">Craft your message, engage your audience, and let AI do the heavy lifting.</p>
       
       <Form {...form}>
@@ -191,8 +192,7 @@ export function CreatePostForm() {
                   />
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button type="button" onClick={handleImproveWriting} disabled={isImproving || !textValue}>
-                      {isImproving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                      Improve with AI
+                      {isImproving ? <GlitchLoader text="Improving..." /> : <><Wand2 className="mr-2 h-4 w-4" />Improve with AI</>}
                     </Button>
                   </div>
                   <FormField
@@ -239,10 +239,9 @@ export function CreatePostForm() {
                             )}
                         />
                          <Button type="button" onClick={handleGenerateImage} disabled={isGenerating || !textValue}>
-                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                            { form.getValues('imagePrompt') ? 'Generate Image' : 'Generate from Text' }
+                            {isGenerating ? <GlitchLoader text="Generating..." /> : <><Wand2 className="mr-2 h-4 w-4" />{ form.getValues('imagePrompt') ? 'Generate Image' : 'Generate from Text' }</>}
                         </Button>
-                        {isGenerating && <div className="flex items-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating your image, please wait...</div>}
+                        {isGenerating && <div className="flex items-center text-sm text-muted-foreground"><GlitchLoader text="Generating your image, please wait..." /></div>}
                         {generatedImageUrl && (
                             <div className="mt-4">
                                 <p className="font-medium mb-2">Generated Image:</p>
@@ -252,8 +251,8 @@ export function CreatePostForm() {
                         {!generatedImageUrl && !isGenerating && (
                            <div className="mt-4 rounded-lg border border-dashed aspect-square w-full max-w-md flex items-center justify-center bg-muted/50">
                                <div className="text-center text-muted-foreground">
-                                   <Wand2 className="mx-auto h-12 w-12" />
-                                   <p className="mt-2">Your generated image will appear here</p>
+                                   <Terminal className="mx-auto h-12 w-12" />
+                                   <p className="mt-2">Awaiting image generation...</p>
                                </div>
                            </div>
                         )}
