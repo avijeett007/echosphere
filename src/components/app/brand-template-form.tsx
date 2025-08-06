@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Upload } from 'lucide-react';
+import React from 'react';
 
 const formSchema = z.object({
   brandName: z.string().min(1, 'Brand name is required'),
@@ -29,6 +30,7 @@ const defaultBrandColor = '#F2994A';
 
 export function BrandTemplateForm() {
   const { toast } = useToast();
+  const [fileName, setFileName] = React.useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -47,6 +49,7 @@ export function BrandTemplateForm() {
       description: 'This is a placeholder. Functionality to be implemented.',
     });
     form.reset();
+    setFileName(null);
   }
 
   return (
@@ -109,12 +112,27 @@ export function BrandTemplateForm() {
                         <FormLabel>Logo</FormLabel>
                         <FormControl>
                             <div className="flex items-center justify-center w-full">
-                                <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-not-allowed bg-muted/20">
+                                <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40">
                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                         <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
-                                        <p className="mb-2 text-sm text-muted-foreground">Upload feature coming soon</p>
+                                        {fileName ? (
+                                            <p className="font-semibold text-primary">{fileName}</p>
+                                        ) : (
+                                            <p className="mb-2 text-sm text-muted-foreground">Click to upload or drag and drop</p>
+                                        )}
+                                        <p className="text-xs text-muted-foreground">PNG, JPG or SVG (MAX. 800x400px)</p>
                                     </div>
-                                    <Input id="dropzone-file" type="file" className="hidden" disabled />
+                                    <Input 
+                                        id="dropzone-file" 
+                                        type="file" 
+                                        className="hidden" 
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            field.onChange(file);
+                                            setFileName(file?.name || null);
+                                        }}
+                                        accept="image/png, image/jpeg, image/svg+xml"
+                                    />
                                 </label>
                             </div> 
                         </FormControl>
