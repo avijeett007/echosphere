@@ -1,7 +1,6 @@
 
 import { BrandTemplateForm } from '@/components/app/brand-template-form';
 import { BrandTemplateList } from '@/components/app/brand-template-list';
-import { Separator } from '@/components/ui/separator';
 
 export default function BrandTemplatesPage() {
   return (

@@ -1,19 +1,11 @@
 'use client';
 
-import {
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-} from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons/logo';
 import { Pencil, History, LogOut, Library, Users, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 const adminEmail = 'avijeett007@gmail.com';
 
@@ -22,6 +14,18 @@ const useUser = () => {
     // In a real app, you'd get this from your auth context
     return { user: { email: 'avijeett007@gmail.com' }, isLoading: false };
 }
+
+const NavLink = ({ href, children, isActive }: { href: string; children: React.ReactNode; isActive: boolean }) => (
+  <Link
+    href={href}
+    className={cn(
+      "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+      isActive && "bg-muted text-primary"
+    )}
+  >
+    {children}
+  </Link>
+);
 
 
 export function AppSidebar() {
@@ -36,65 +40,47 @@ export function AppSidebar() {
   const isAdmin = user?.email === adminEmail;
 
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <div className="flex items-center gap-2">
-          <Logo className="h-8 w-8 text-primary" />
-          <h1 className="font-headline text-xl font-semibold text-sidebar-foreground">EchoSphere</h1>
+    <div className="hidden border-r bg-muted/40 md:block w-64">
+      <div className="flex h-full max-h-screen flex-col gap-2">
+        <div className="flex h-14 items-center border-b px-6">
+          <Link href="/" className="flex items-center gap-2 font-semibold">
+            <Logo className="h-6 w-6 text-primary" />
+            <span className="font-headline">EchoSphere</span>
+          </Link>
         </div>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === '/create-post'} tooltip="Create Post">
-              <Link href="/create-post">
-                <Pencil />
-                <span>Create Post</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === '/history'} tooltip="Post History">
-              <Link href="/history">
-                <History />
-                <span>Post History</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === '/brand-templates'} tooltip="Brand Templates">
-              <Link href="/brand-templates">
-                <Library />
-                <span>Brand Templates</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-           {isAdmin && (
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/user-management'} tooltip="User Management">
-                <Link href="/user-management">
-                  <Users />
-                  <span>User Management</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-          <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/settings'} tooltip="Settings">
-                <Link href="/settings">
-                  <Settings />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarContent>
-      <SidebarFooter>
-        <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
-          <LogOut className="h-4 w-4" />
-          <span>Logout</span>
-        </Button>
-      </SidebarFooter>
-    </Sidebar>
+        <div className="flex-1 overflow-auto py-2">
+          <nav className="grid items-start px-4 text-sm font-medium">
+            <NavLink href="/create-post" isActive={pathname === '/create-post'}>
+              <Pencil className="h-4 w-4" />
+              Create Post
+            </NavLink>
+            <NavLink href="/history" isActive={pathname === '/history'}>
+              <History className="h-4 w-4" />
+              Post History
+            </NavLink>
+            <NavLink href="/brand-templates" isActive={pathname === '/brand-templates'}>
+              <Library className="h-4 w-4" />
+              Brand Templates
+            </NavLink>
+            {isAdmin && (
+               <NavLink href="/user-management" isActive={pathname === '/user-management'}>
+                <Users className="h-4 w-4" />
+                User Management
+              </NavLink>
+            )}
+            <NavLink href="/settings" isActive={pathname === '/settings'}>
+              <Settings className="h-4 w-4" />
+              Settings
+            </NavLink>
+          </nav>
+        </div>
+        <div className="mt-auto p-4">
+           <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
