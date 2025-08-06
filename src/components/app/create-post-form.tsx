@@ -30,7 +30,7 @@ import { generateImageFromPrompt } from '@/ai/flows/generate-image-from-prompt';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth.tsx';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 

@@ -9,7 +9,7 @@ import { socialIconMap } from '@/components/icons/social-icons';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { FileQuestion, Library, Loader } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth.tsx';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, getDocs, DocumentData } from 'firebase/firestore';
 

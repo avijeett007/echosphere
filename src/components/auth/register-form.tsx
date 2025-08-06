@@ -29,7 +29,7 @@ import { Logo } from '../icons/logo';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
-import { adminEmail } from '@/hooks/use-auth';
+import { adminEmail } from '@/hooks/use-auth.tsx';
 import React from 'react';
 import { Loader } from 'lucide-react';
 
