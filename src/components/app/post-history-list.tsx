@@ -1,23 +1,69 @@
+
 'use client';
 
-import { useLocalStorage } from '@/hooks/use-local-storage';
-import { Post } from '@/lib/types';
+import { useEffect, useState } from 'react';
+import { Post, BrandTemplate } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { socialIconMap } from '@/components/icons/social-icons';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
-import { FileQuestion, Library } from 'lucide-react';
+import { FileQuestion, Library, Loader } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot, orderBy, getDocs, DocumentData } from 'firebase/firestore';
 
-// Placeholder data for brand templates
-const brandTemplates = [
-  { id: 'template1', name: 'Default Brand', color: '#F2994A' },
-  { id: 'template2', name: 'New Campaign', color: '#2D9CDB' },
-  { id: 'template3', name: 'Social Buzz', color: '#27AE60' },
-];
 
 export function PostHistoryList() {
-  const [posts] = useLocalStorage<Post[]>('post-history', []);
+  const { user } = useAuth();
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [brandTemplates, setBrandTemplates] = useState<Map<string, BrandTemplate>>(new Map());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+
+    setLoading(true);
+    
+    // Fetch all brand templates once
+    const fetchBrandTemplates = async () => {
+        const templatesCollection = collection(db, 'brandTemplates');
+        const templateSnapshot = await getDocs(templatesCollection);
+        const templatesMap = new Map<string, BrandTemplate>();
+        templateSnapshot.forEach(doc => {
+            templatesMap.set(doc.id, { id: doc.id, ...doc.data() } as BrandTemplate);
+        });
+        setBrandTemplates(templatesMap);
+    };
+
+    fetchBrandTemplates().then(() => {
+       const q = query(collection(db, 'posts'), where('userId', '==', user.uid), orderBy('submittedAt', 'desc'));
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const postsData: Post[] = [];
+            querySnapshot.forEach(doc => {
+                postsData.push({ id: doc.id, ...(doc.data() as Omit<Post, 'id'>) });
+            });
+            setPosts(postsData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching posts: ", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    });
+
+  }, [user]);
+
+  if (loading) {
+    return (
+        <div className="flex flex-col items-center justify-center text-center h-[calc(100vh-200px)]">
+            <Loader className="h-16 w-16 text-muted-foreground animate-spin" />
+            <h2 className="mt-6 text-xl font-semibold font-headline">Loading Post History...</h2>
+        </div>
+    )
+  }
 
   if (posts.length === 0) {
     return (
@@ -33,7 +79,7 @@ export function PostHistoryList() {
     <div className="space-y-6">
       {posts.map((post) => {
         const submittedAt = new Date(post.submittedAt);
-        const brand = brandTemplates.find(b => b.id === post.brandTemplateId);
+        const brand = post.brandTemplateId ? brandTemplates.get(post.brandTemplateId) : undefined;
 
         return (
           <Card key={post.id}>
@@ -80,7 +126,7 @@ export function PostHistoryList() {
                 <CardFooter>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Library className="h-3 w-3" />
-                        <span>{brand.name}</span>
+                        <span>{brand.brandName}</span>
                         <span style={{color: brand.color}}>●</span>
                     </div>
                 </CardFooter>

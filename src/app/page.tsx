@@ -1,14 +1,28 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { GlitchLoader } from '@/components/ui/glitch-loader';
 
 export default function Home() {
   const router = useRouter();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    router.replace('/login');
-  }, [router]);
+    if (!loading) {
+      if (user) {
+        router.replace('/create-post');
+      } else {
+        router.replace('/login');
+      }
+    }
+  }, [user, loading, router]);
 
-  return null;
+  return (
+    <div className="flex h-screen items-center justify-center">
+        <GlitchLoader text="Initializing..." />
+    </div>
+  );
 }

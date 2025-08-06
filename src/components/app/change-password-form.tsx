@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,6 +16,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import React from 'react';
+import { Loader } from 'lucide-react';
 
 const formSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
@@ -23,6 +28,7 @@ const formSchema = z.object({
 
 export function ChangePasswordForm() {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -32,13 +38,40 @@ export function ChangePasswordForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: 'Password Updated!',
-      description: 'This is a placeholder. Functionality to be implemented.',
-    });
-    form.reset();
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
+    const user = auth.currentUser;
+
+    if (!user || !user.email) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You must be logged in to change your password.',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const credential = EmailAuthProvider.credential(user.email, values.currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, values.newPassword);
+      
+      toast({
+        title: 'Password Updated!',
+        description: 'Your password has been changed successfully.',
+      });
+      form.reset();
+    } catch (error: any) {
+        console.error("Password Change Error: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: error.code === 'auth/wrong-password' ? 'Incorrect current password.' : error.message,
+        });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
@@ -72,7 +105,8 @@ export function ChangePasswordForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               Update Password
             </Button>
           </form>
@@ -81,3 +115,4 @@ export function ChangePasswordForm() {
     </Card>
   );
 }
+

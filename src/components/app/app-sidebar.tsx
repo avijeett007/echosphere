@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -6,14 +7,10 @@ import { Pencil, History, LogOut, Library, Users, Settings } from 'lucide-react'
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-
-const adminEmail = 'avijeett007@gmail.com';
-
-// A placeholder for a real auth hook
-const useUser = () => {
-    // In a real app, you'd get this from your auth context
-    return { user: { email: 'avijeett007@gmail.com' }, isLoading: false };
-}
+import { useAuth } from '@/hooks/use-auth';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
 
 const NavLink = ({ href, children, isActive }: { href: string; children: React.ReactNode; isActive: boolean }) => (
   <Link
@@ -31,13 +28,26 @@ const NavLink = ({ href, children, isActive }: { href: string; children: React.R
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useUser();
+  const { isAdmin } = useAuth();
+  const { toast } = useToast();
 
-  const handleLogout = () => {
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({
+        title: 'Logged Out',
+        description: 'You have been successfully logged out.',
+      });
+      router.push('/login');
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Logout Failed',
+            description: 'There was an error logging you out. Please try again.',
+        });
+    }
   };
 
-  const isAdmin = user?.email === adminEmail;
 
   return (
     <div className="hidden border-r bg-muted/40 md:block w-64">
@@ -58,10 +68,12 @@ export function AppSidebar() {
               <History className="h-4 w-4" />
               Post History
             </NavLink>
-            <NavLink href="/brand-templates" isActive={pathname === '/brand-templates'}>
-              <Library className="h-4 w-4" />
-              Brand Templates
-            </NavLink>
+            {isAdmin && (
+              <NavLink href="/brand-templates" isActive={pathname === '/brand-templates'}>
+                <Library className="h-4 w-4" />
+                Brand Templates
+              </NavLink>
+            )}
             {isAdmin && (
                <NavLink href="/user-management" isActive={pathname === '/user-management'}>
                 <Users className="h-4 w-4" />

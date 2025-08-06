@@ -16,21 +16,25 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Upload } from 'lucide-react';
+import { Loader, Upload } from 'lucide-react';
 import React from 'react';
+import { db, storage } from '@/lib/firebase';
+import { addDoc, collection } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 const formSchema = z.object({
   brandName: z.string().min(1, 'Brand name is required'),
   slogan: z.string().optional(),
   color: z.string().optional(),
-  logo: z.any().optional(),
+  logo: z.instanceof(File).optional(),
 });
 
 const defaultBrandColor = '#F2994A';
 
-export function BrandTemplateForm() {
+export function BrandTemplateForm({ onTemplateCreated }: { onTemplateCreated: () => void }) {
   const { toast } = useToast();
   const [fileName, setFileName] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -38,18 +42,44 @@ export function BrandTemplateForm() {
       brandName: '',
       slogan: '',
       color: defaultBrandColor,
-      logo: null,
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: 'Brand Template Saved!',
-      description: 'This is a placeholder. Functionality to be implemented.',
-    });
-    form.reset();
-    setFileName(null);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
+    try {
+        let logoUrl = '';
+        if (values.logo) {
+            const storageRef = ref(storage, `logos/${Date.now()}_${values.logo.name}`);
+            const snapshot = await uploadBytes(storageRef, values.logo);
+            logoUrl = await getDownloadURL(snapshot.ref);
+        }
+
+      await addDoc(collection(db, 'brandTemplates'), {
+        brandName: values.brandName,
+        slogan: values.slogan,
+        color: values.color,
+        logoUrl: logoUrl,
+        createdAt: new Date().toISOString(),
+      });
+      
+      toast({
+        title: 'Brand Template Saved!',
+        description: 'Your new brand template is now available.',
+      });
+      form.reset();
+      setFileName(null);
+      onTemplateCreated();
+    } catch (error: any) {
+        console.error("Error creating template: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not save the brand template. Please try again.',
+        });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
@@ -128,8 +158,10 @@ export function BrandTemplateForm() {
                                         className="hidden" 
                                         onChange={(e) => {
                                             const file = e.target.files?.[0];
-                                            field.onChange(file);
-                                            setFileName(file?.name || null);
+                                            if (file) {
+                                                field.onChange(file);
+                                                setFileName(file.name);
+                                            }
                                         }}
                                         accept="image/png, image/jpeg, image/svg+xml"
                                     />
@@ -140,7 +172,8 @@ export function BrandTemplateForm() {
                     </FormItem>
                 )}
             />
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               Save Template
             </Button>
           </form>
@@ -149,3 +182,4 @@ export function BrandTemplateForm() {
     </Card>
   );
 }
+

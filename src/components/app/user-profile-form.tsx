@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,6 +16,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
+import { updateProfile } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import React from 'react';
+import { Loader } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -23,22 +30,44 @@ const formSchema = z.object({
 
 export function UserProfileForm() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    // In a real app, you'd fetch this data
-    defaultValues: {
-      name: 'Avijeet',
-      email: 'avijeett007@gmail.com',
+    values: {
+      name: user?.displayName || '',
+      email: user?.email || '',
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: 'Profile Updated!',
-      description: 'Your changes have been saved.',
-    });
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user) return;
+    setIsLoading(true);
+
+    try {
+      // Update Firebase Auth profile
+      if (values.name !== user.displayName) {
+        await updateProfile(user, { displayName: values.name });
+      }
+
+      // Update user document in Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, { name: values.name });
+      
+      toast({
+        title: 'Profile Updated!',
+        description: 'Your changes have been saved.',
+      });
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: error.message || 'Could not update profile.',
+        });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
@@ -72,7 +101,8 @@ export function UserProfileForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
           </form>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +26,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '../icons/logo';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import React from 'react';
+import { Loader } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -34,6 +39,7 @@ const formSchema = z.object({
 export function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -43,13 +49,25 @@ export function LoginForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log('Login attempt with:', values);
-    toast({
-      title: 'Login Successful',
-      description: 'Redirecting to your dashboard...',
-    });
-    router.push('/create-post');
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      toast({
+        title: 'Login Successful',
+        description: 'Redirecting to your dashboard...',
+      });
+      router.push('/create-post');
+    } catch (error: any) {
+        console.error("Login Error:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: error.message || 'Invalid credentials. Please try again.',
+        });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
@@ -90,7 +108,8 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               Login
             </Button>
           </form>
@@ -107,3 +126,4 @@ export function LoginForm() {
     </Card>
   );
 }
+

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +26,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '../icons/logo';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { adminEmail } from '@/hooks/use-auth';
+import React from 'react';
+import { Loader } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -35,6 +42,7 @@ const formSchema = z.object({
 export function RegisterForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -45,13 +53,40 @@ export function RegisterForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log('Registration attempt with:', values);
-    toast({
-      title: 'Registration Successful',
-      description: "You can now log in with your new account.",
-    });
-    router.push('/login');
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      await updateProfile(user, {
+        displayName: values.name,
+      });
+
+      // Create user document in Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        name: values.name,
+        email: values.email,
+        role: values.email === adminEmail ? 'admin' : 'user',
+        assignedBrandTemplates: [],
+      });
+
+      toast({
+        title: 'Registration Successful',
+        description: "You can now log in with your new account.",
+      });
+      router.push('/login');
+    } catch (error: any) {
+      console.error('Registration Error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Registration Failed',
+        description: error.message || 'An unexpected error occurred.',
+      });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
@@ -105,7 +140,8 @@ export function RegisterForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
               Create Account
             </Button>
           </form>

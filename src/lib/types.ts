@@ -1,3 +1,4 @@
+
 export const socialPlatforms = [
   'Facebook',
   'Instagram',
@@ -11,7 +12,7 @@ export type SocialPlatform = (typeof socialPlatforms)[number];
 
 export interface BrandTemplate {
   id: string;
-  name: string;
+  brandName: string;
   slogan?: string;
   color?: string;
   logoUrl?: string;
@@ -19,12 +20,13 @@ export interface BrandTemplate {
 
 export interface Post {
   id: string;
+  userId: string;
   platforms: SocialPlatform[];
   text: string;
   hashtags: string;
   imageUrl?: string;
   imagePrompt?: string;
   videoUrl?: string;
-  brandTemplateId?: string;
+  brandTemplateId: string;
   submittedAt: string;
 }

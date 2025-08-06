@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,17 +19,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Post, socialPlatforms, SocialPlatform } from '@/lib/types';
+import { Post, socialPlatforms, SocialPlatform, BrandTemplate } from '@/lib/types';
 import { socialIconMap } from '@/components/icons/social-icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Wand2, Upload, Link as LinkIcon, Bot, Terminal, Loader } from 'lucide-react';
-import React, { useTransition } from 'react';
+import React, { useTransition, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { improveWritingAndAddHashtags } from '@/ai/flows/improve-writing-and-add-hashtags';
 import { generateImageFromPrompt } from '@/ai/flows/generate-image-from-prompt';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   platforms: z.array(z.string()).refine((value) => value.some((item) => item), {
@@ -36,25 +40,61 @@ const formSchema = z.object({
   }),
   text: z.string().min(1, { message: 'Post content cannot be empty.' }),
   hashtags: z.string().optional(),
-  brandTemplateId: z.string().optional(),
+  brandTemplateId: z.string().min(1, { message: 'Please select a brand template.' }),
   imagePrompt: z.string().optional(),
   videoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 });
 
-// Placeholder data for brand templates
-const brandTemplates = [
-  { id: 'template1', name: 'Default Brand' },
-  { id: 'template2', name: 'New Campaign' },
-  { id: 'template3', name: 'Social Buzz' },
-];
-
 
 export function CreatePostForm() {
   const { toast } = useToast();
+  const { user, userData, isAdmin } = useAuth();
   const [posts, setPosts] = useLocalStorage<Post[]>('post-history', []);
   const [isImproving, startImproving] = useTransition();
   const [isGenerating, startGenerating] = useTransition();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
+  const [brandTemplates, setBrandTemplates] = useState<BrandTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
+
+  useEffect(() => {
+    const fetchBrandTemplates = async () => {
+        if (!user || !userData) return;
+        setLoadingTemplates(true);
+        try {
+            let templatesQuery;
+            if (isAdmin) {
+                // Admin gets all templates
+                templatesQuery = query(collection(db, "brandTemplates"));
+            } else {
+                // Regular user gets only assigned templates
+                const assignedIds = userData.assignedBrandTemplates || [];
+                if (assignedIds.length === 0) {
+                    setBrandTemplates([]);
+                    setLoadingTemplates(false);
+                    return;
+                }
+                templatesQuery = query(collection(db, "brandTemplates"), where('__name__', 'in', assignedIds));
+            }
+
+            const querySnapshot = await getDocs(templatesQuery);
+            const templates = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BrandTemplate));
+            setBrandTemplates(templates);
+        } catch (error) {
+            console.error("Error fetching brand templates: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not fetch brand templates.',
+            });
+        } finally {
+            setLoadingTemplates(false);
+        }
+    };
+
+    fetchBrandTemplates();
+}, [user, userData, isAdmin, toast]);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,7 +102,7 @@ export function CreatePostForm() {
       platforms: ['X'],
       text: '',
       hashtags: '',
-      brandTemplateId: 'template1',
+      brandTemplateId: '',
       imagePrompt: '',
       videoUrl: '',
     },
@@ -104,11 +144,21 @@ export function CreatePostForm() {
 
   const handleGenerateImage = () => {
     let prompt = form.getValues('imagePrompt');
-    const brandTemplate = brandTemplates.find(t => t.id === form.getValues('brandTemplateId'));
-    const brandNameValue = brandTemplate?.name || 'our brand';
+    const brandTemplateId = form.getValues('brandTemplateId');
+    const brandTemplate = brandTemplates.find(t => t.id === brandTemplateId);
+    
+    if (!textValue) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please enter some text for the post first.' });
+      return;
+    }
+     if (!brandTemplateId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Please select a brand template first.' });
+      return;
+    }
+
 
     if (!prompt) {
-        prompt = `Create a visually appealing graphic for a social media post. The content is about: "${textValue}". The brand is "${brandNameValue}". Make it modern and engaging.`;
+        prompt = `Create a visually appealing graphic for a social media post for "${brandTemplate?.brandName}". The content is about: "${textValue}". The brand's slogan is "${brandTemplate?.slogan}". The primary brand color is ${brandTemplate?.color}. Make it modern and engaging.`;
         form.setValue('imagePrompt', prompt, { shouldValidate: true });
     }
 
@@ -132,27 +182,49 @@ export function CreatePostForm() {
     });
   };
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const newPost: Post = {
-      id: new Date().toISOString(),
-      platforms: values.platforms as SocialPlatform[],
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user) return;
+    setIsSubmitting(true);
+    
+    const newPostData = {
+      userId: user.uid,
+      platforms: values.platforms,
       text: values.text,
       hashtags: values.hashtags || '',
-      imageUrl: generatedImageUrl || undefined,
-      imagePrompt: values.imagePrompt,
-      videoUrl: values.videoUrl,
+      imageUrl: generatedImageUrl || '',
+      imagePrompt: values.imagePrompt || '',
+      videoUrl: values.videoUrl || '',
       brandTemplateId: values.brandTemplateId,
       submittedAt: new Date().toISOString(),
     };
 
-    setPosts([newPost, ...posts]);
-    
-    toast({
-      title: 'Post Submitted!',
-      description: 'Your post has been sent to the N8N workflow and saved to history.',
-    });
-    form.reset();
-    setGeneratedImageUrl(null);
+    try {
+        const docRef = await addDoc(collection(db, 'posts'), newPostData);
+        
+        // Also update local storage for quick history view, though this could be fully Firestore-driven
+        const postForLocalStorage: Post = {
+            id: docRef.id,
+            platforms: values.platforms as SocialPlatform[],
+            ...newPostData
+        };
+        setPosts([postForLocalStorage, ...posts]);
+        
+        toast({
+          title: 'Post Submitted!',
+          description: 'Your post has been saved to the database.',
+        });
+        form.reset();
+        setGeneratedImageUrl(null);
+    } catch (error: any) {
+        console.error("Error submitting post: ", error);
+         toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Could not save your post. Please try again.',
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -233,7 +305,7 @@ export function CreatePostForm() {
                                 </FormItem>
                             )}
                         />
-                         <Button type="button" onClick={handleGenerateImage} disabled={isGenerating || !textValue}>
+                         <Button type="button" onClick={handleGenerateImage} disabled={isGenerating || !textValue || !form.getValues('brandTemplateId')}>
                             {isGenerating ? <><Loader className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Wand2 className="mr-2 h-4 w-4" />{ form.getValues('imagePrompt') ? 'Generate Image' : 'Generate from Text' }</>}
                         </Button>
                         {isGenerating && (
@@ -356,16 +428,19 @@ export function CreatePostForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Select Brand</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a brand template" />
+                            <SelectTrigger disabled={loadingTemplates}>
+                              <SelectValue placeholder={loadingTemplates ? "Loading brands..." : "Select a brand template"} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            {!loadingTemplates && brandTemplates.length === 0 && (
+                                <SelectItem value="no-brand" disabled>No brand templates available.</SelectItem>
+                            )}
                             {brandTemplates.map((template) => (
                               <SelectItem key={template.id} value={template.id}>
-                                {template.name}
+                                {template.brandName}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -377,7 +452,8 @@ export function CreatePostForm() {
                 </CardContent>
               </Card>
 
-              <Button type="submit" size="lg" className="w-full font-bold">
+              <Button type="submit" size="lg" className="w-full font-bold" disabled={isSubmitting}>
+                {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 Submit Post
               </Button>
             </div>
