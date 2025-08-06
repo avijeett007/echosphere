@@ -1,25 +1,20 @@
 
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  projectId: "***REMOVED***",
-  appId: "1:***REMOVED***:web:27e0f32ccb52438751253b",
-  storageBucket: "***REMOVED***.appspot.com",
   apiKey: "***REMOVED***",
   authDomain: "***REMOVED***.firebaseapp.com",
+  projectId: "***REMOVED***",
+  storageBucket: "***REMOVED***.appspot.com",
   messagingSenderId: "***REMOVED***",
+  appId: "1:***REMOVED***:web:27e0f32ccb52438751253b"
 };
 
 // Initialize Firebase
-let app: FirebaseApp;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
-}
+const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app);
