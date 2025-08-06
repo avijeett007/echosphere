@@ -7,7 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { socialIconMap } from '@/components/icons/social-icons';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
-import { FileQuestion } from 'lucide-react';
+import { FileQuestion, Library } from 'lucide-react';
+
+// Placeholder data for brand templates
+const brandTemplates = [
+  { id: 'template1', name: 'Default Brand', color: '#F2994A' },
+  { id: 'template2', name: 'New Campaign', color: '#2D9CDB' },
+  { id: 'template3', name: 'Social Buzz', color: '#27AE60' },
+];
 
 export function PostHistoryList() {
   const [posts] = useLocalStorage<Post[]>('post-history', []);
@@ -26,6 +33,8 @@ export function PostHistoryList() {
     <div className="space-y-6">
       {posts.map((post) => {
         const submittedAt = new Date(post.submittedAt);
+        const brand = brandTemplates.find(b => b.id === post.brandTemplateId);
+
         return (
           <Card key={post.id}>
             <CardHeader>
@@ -67,11 +76,12 @@ export function PostHistoryList() {
                 </div>
               )}
             </CardContent>
-            {post.brandTemplate && (
+            {brand && (
                 <CardFooter>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>Brand: {post.brandTemplate.brandName}</span>
-                        <span style={{color: post.brandTemplate.color}}>●</span>
+                        <Library className="h-3 w-3" />
+                        <span>{brand.name}</span>
+                        <span style={{color: brand.color}}>●</span>
                     </div>
                 </CardFooter>
             )}

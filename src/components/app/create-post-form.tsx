@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { BrandTemplate, Post, socialPlatforms, SocialPlatform } from '@/lib/types';
+import { Post, socialPlatforms, SocialPlatform } from '@/lib/types';
 import { socialIconMap } from '@/components/icons/social-icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Wand2, Upload, Link as LinkIcon, Bot, Terminal, Loader } from 'lucide-react';
@@ -27,8 +27,8 @@ import Image from 'next/image';
 import { improveWritingAndAddHashtags } from '@/ai/flows/improve-writing-and-add-hashtags';
 import { generateImageFromPrompt } from '@/ai/flows/generate-image-from-prompt';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
   platforms: z.array(z.string()).refine((value) => value.some((item) => item), {
@@ -36,15 +36,18 @@ const formSchema = z.object({
   }),
   text: z.string().min(1, { message: 'Post content cannot be empty.' }),
   hashtags: z.string().optional(),
-  brandName: z.string().optional(),
-  brandTitle: z.string().optional(),
-  brandSlogan: z.string().optional(),
-  brandColor: z.string().optional(),
+  brandTemplateId: z.string().optional(),
   imagePrompt: z.string().optional(),
   videoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 });
 
-const defaultBrandColor = '#F2994A';
+// Placeholder data for brand templates
+const brandTemplates = [
+  { id: 'template1', name: 'Default Brand' },
+  { id: 'template2', name: 'New Campaign' },
+  { id: 'template3', name: 'Social Buzz' },
+];
+
 
 export function CreatePostForm() {
   const { toast } = useToast();
@@ -59,21 +62,17 @@ export function CreatePostForm() {
       platforms: ['X'],
       text: '',
       hashtags: '',
-      brandName: 'EchoSphere',
-      brandTitle: 'AI-Powered Socials',
-      brandSlogan: 'Amplify Your Voice',
-      brandColor: defaultBrandColor,
+      brandTemplateId: 'template1',
       imagePrompt: '',
       videoUrl: '',
     },
   });
   
   const textValue = form.watch('text');
-  const brandNameValue = form.watch('brandName');
-  const selectedPlatforms = form.watch('platforms');
 
   const handleImproveWriting = () => {
     const text = form.getValues('text');
+    const selectedPlatforms = form.getValues('platforms');
     if (!text) {
       toast({
         variant: 'destructive',
@@ -105,6 +104,9 @@ export function CreatePostForm() {
 
   const handleGenerateImage = () => {
     let prompt = form.getValues('imagePrompt');
+    const brandTemplate = brandTemplates.find(t => t.id === form.getValues('brandTemplateId'));
+    const brandNameValue = brandTemplate?.name || 'our brand';
+
     if (!prompt) {
         prompt = `Create a visually appealing graphic for a social media post. The content is about: "${textValue}". The brand is "${brandNameValue}". Make it modern and engaging.`;
         form.setValue('imagePrompt', prompt, { shouldValidate: true });
@@ -131,13 +133,6 @@ export function CreatePostForm() {
   };
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const brandTemplate: BrandTemplate = {
-      brandName: values.brandName || '',
-      title: values.brandTitle || '',
-      slogan: values.brandSlogan || '',
-      color: values.brandColor || defaultBrandColor,
-    };
-    
     const newPost: Post = {
       id: new Date().toISOString(),
       platforms: values.platforms as SocialPlatform[],
@@ -146,7 +141,7 @@ export function CreatePostForm() {
       imageUrl: generatedImageUrl || undefined,
       imagePrompt: values.imagePrompt,
       videoUrl: values.videoUrl,
-      brandTemplate: (brandTemplate.brandName || brandTemplate.title || brandTemplate.slogan) ? brandTemplate : undefined,
+      brandTemplateId: values.brandTemplateId,
       submittedAt: new Date().toISOString(),
     };
 
@@ -354,36 +349,31 @@ export function CreatePostForm() {
                 <CardHeader>
                   <CardTitle>Brand Template</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField control={form.control} name="brandName" render={({ field }) => (
+                <CardContent>
+                   <FormField
+                    control={form.control}
+                    name="brandTemplateId"
+                    render={({ field }) => (
                       <FormItem>
-                          <FormLabel>Brand Name</FormLabel>
-                          <FormControl><Input placeholder="Your Company" {...field} /></FormControl>
-                      </FormItem>
-                  )} />
-                  <FormField control={form.control} name="brandTitle" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Title</FormLabel>
-                          <FormControl><Input placeholder="Product Launch" {...field} /></FormControl>
-                      </FormItem>
-                  )} />
-                  <FormField control={form.control} name="brandSlogan" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Slogan</FormLabel>
-                          <FormControl><Input placeholder="Innovate. Create. Inspire." {...field} /></FormControl>
-                      </FormItem>
-                  )} />
-                  <FormField control={form.control} name="brandColor" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Brand Color</FormLabel>
+                        <FormLabel>Select Brand</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <div className="relative">
-                                <Input type="text" {...field} />
-                                <input type="color" className="absolute top-0 right-0 h-full w-10 p-2 bg-transparent border-none cursor-pointer" value={field.value} onChange={e => field.onChange(e.target.value)} />
-                            </div>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a brand template" />
+                            </SelectTrigger>
                           </FormControl>
+                          <SelectContent>
+                            {brandTemplates.map((template) => (
+                              <SelectItem key={template.id} value={template.id}>
+                                {template.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
                       </FormItem>
-                  )} />
+                    )}
+                  />
                 </CardContent>
               </Card>
 

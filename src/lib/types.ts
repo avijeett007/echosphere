@@ -10,10 +10,11 @@ export const socialPlatforms = [
 export type SocialPlatform = (typeof socialPlatforms)[number];
 
 export interface BrandTemplate {
-  brandName: string;
-  title: string;
-  slogan: string;
-  color: string;
+  id: string;
+  name: string;
+  slogan?: string;
+  color?: string;
+  logoUrl?: string;
 }
 
 export interface Post {
@@ -24,6 +25,6 @@ export interface Post {
   imageUrl?: string;
   imagePrompt?: string;
   videoUrl?: string;
-  brandTemplate?: BrandTemplate;
+  brandTemplateId?: string;
   submittedAt: string;
 }
