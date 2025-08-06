@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/icons/logo';
-import { Pencil, History, LogOut } from 'lucide-react';
+import { Pencil, History, LogOut, Library } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -46,6 +46,14 @@ export function AppSidebar() {
               <Link href="/history">
                 <History />
                 <span>Post History</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === '/brand-templates'} tooltip="Brand Templates">
+              <Link href="/brand-templates">
+                <Library />
+                <span>Brand Templates</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
